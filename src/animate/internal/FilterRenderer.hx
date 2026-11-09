@@ -296,8 +296,18 @@ class FilterRenderer
 
 			var gfx = cam.canvas.graphics;
 			var gfxBounds = gfx.__bounds;
-			resultFilteredBounds = expandFilterBounds(FlxRect.get().copyFromFlash(gfxBounds), scaledFilters);
-			resultFilteredBounds.copyToFlash(gfxBounds);
+
+			if (gfxBounds != null && gfxBounds.width > 0 && gfxBounds.height > 0)
+			{
+				resultFilteredBounds = expandFilterBounds(FlxRect.get().copyFromFlash(gfxBounds), scaledFilters);
+				resultFilteredBounds.copyToFlash(gfxBounds);
+			}
+			else
+			{
+				resultFilteredBounds = FlxRect.get(0, 0, 1, 1);
+				if (gfxBounds != null)
+					resultFilteredBounds.copyToFlash(gfxBounds);
+			}
 		});
 
 		if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0)
