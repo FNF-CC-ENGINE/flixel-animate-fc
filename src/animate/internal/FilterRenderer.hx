@@ -285,7 +285,20 @@ class FilterRenderer
 			resultFilteredBounds.copyToFlash(gfxBounds);
 		});
 
-		var frame = FlxGraphic.fromBitmapData(bitmap).imageFrame.frame;
+		if (bitmap == null)
+		{
+			scale.put();
+			return new AtlasInstance();
+		}
+
+		var graphic = FlxGraphic.fromBitmapData(bitmap);
+		if (graphic == null || graphic.imageFrame == null)
+		{
+			scale.put();
+			return new AtlasInstance();
+		}
+
+		var frame = graphic.imageFrame.frame;
 		frame.parent.persist = true;
 		frame.parent.destroyOnNoUse = false;
 		filterFrame(frame, filters);
