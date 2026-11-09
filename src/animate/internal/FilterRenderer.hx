@@ -133,7 +133,22 @@ class FilterRenderer
 				blend = element.toMovieClipInstance().blend;
 		}
 
-		var frame = FlxGraphic.fromBitmapData(masked).imageFrame.frame;
+		if (masked == null)
+		{
+			Rectangle.__pool.release(rect);
+			FlxDestroyUtil.dispose(masker);
+			return new AtlasInstance();
+		}
+
+		var graphic = FlxGraphic.fromBitmapData(masked);
+		if (graphic == null || graphic.imageFrame == null)
+		{
+			Rectangle.__pool.release(rect);
+			FlxDestroyUtil.dispose(masker);
+			return new AtlasInstance();
+		}
+		
+		var frame = graphic.imageFrame.frame;
 		frame.parent.persist = true;
 		frame.parent.destroyOnNoUse = false;
 		MaskShader.maskAlpha(masked, masker, rect);
@@ -156,7 +171,7 @@ class FilterRenderer
 
 	public static function renderGfx(gfx:Graphics):Null<BitmapData>
 	{
-		if (gfx.__bounds == null)
+		if (gfx.__bounds == null || gfx.__bounds.width <= 0 || gfx.__bounds.height <= 0)
 			return null;
 
 		var renderer = FilterRenderer.renderer;
