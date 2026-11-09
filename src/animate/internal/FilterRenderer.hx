@@ -147,7 +147,7 @@ class FilterRenderer
 			FlxDestroyUtil.dispose(masker);
 			return new AtlasInstance();
 		}
-		
+
 		var frame = graphic.imageFrame.frame;
 		frame.parent.persist = true;
 		frame.parent.destroyOnNoUse = false;
@@ -300,15 +300,17 @@ class FilterRenderer
 			resultFilteredBounds.copyToFlash(gfxBounds);
 		});
 
-		if (bitmap == null)
+		if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0)
 		{
+			if (bitmap != null) FlxDestroyUtil.dispose(bitmap);
 			scale.put();
 			return new AtlasInstance();
 		}
 
 		var graphic = FlxGraphic.fromBitmapData(bitmap);
-		if (graphic == null || graphic.imageFrame == null)
+		if (graphic == null || graphic.imageFrame == null || graphic.imageFrame.frame == null)
 		{
+			FlxDestroyUtil.dispose(bitmap);
 			scale.put();
 			return new AtlasInstance();
 		}
@@ -316,7 +318,14 @@ class FilterRenderer
 		var frame = graphic.imageFrame.frame;
 		frame.parent.persist = true;
 		frame.parent.destroyOnNoUse = false;
+		
 		filterFrame(frame, filters);
+
+		if (frame.parent == null || frame.parent.bitmap == null)
+		{
+			scale.put();
+			return new AtlasInstance();
+		}
 
 		// Small offset to account for pixel-innacuracies
 		var xOffset:Float = ((resultFilteredBounds.width * scale.x) - filteredBounds.width) / 2;
@@ -337,16 +346,32 @@ class FilterRenderer
 
 	public static function filterFrame(frame:FlxFrame, ?filters:Array<BitmapFilter>, ?point:Point):Void
 	{
-		if (filters == null || filters.length <= 0)
+		if (filters == null || filters.length <= 0 || frame == null || frame.parent == null || frame.parent.bitmap == null)
 			return;
 
-		var filterFrame = new FlxFrame(FlxGraphic.fromRectangle(Math.ceil(frame.frame.width), Math.ceil(frame.frame.height), 0, true));
-		filterFrame.parent.bitmap = applyFilter(filterFrame.parent.bitmap, frame.parent.bitmap, filters, point);
-		filterFrame.frame = FlxRect.get(0, 0, filterFrame.parent.bitmap.width, filterFrame.parent.bitmap.height);
+		var srcBitmap = frame.parent.bitmap;
+		if (srcBitmap.width <= 0 || srcBitmap.height <= 0)
+			return;
+
+		var filterGraphic = FlxGraphic.fromRectangle(Math.ceil(frame.frame.width), Math.ceil(frame.frame.height), 0, true);
+		if (filterGraphic == null || filterGraphic.bitmap == null)
+			return;
+
+		var filterFrameObj = new FlxFrame(filterGraphic);
+		var filteredBitmap = applyFilter(filterFrameObj.parent.bitmap, srcBitmap, filters, point);
+
+		if (filteredBitmap == null)
+		{
+			FlxDestroyUtil.dispose(filterGraphic.bitmap);
+			return;
+		}
+
+		filterFrameObj.parent.bitmap = filteredBitmap;
+		filterFrameObj.frame = FlxRect.get(0, 0, filteredBitmap.width, filteredBitmap.height);
 
 		// Remove & replace the original bitmap
 		FlxDestroyUtil.dispose(frame.parent.bitmap);
-		filterFrame.copyTo(frame);
+		filterFrameObj.copyTo(frame);
 	}
 
 	/**
@@ -358,12 +383,21 @@ class FilterRenderer
 	 */
 	public static function applyFilter(?target:BitmapData, bitmap:BitmapData, filters:Array<BitmapFilter>, ?point:Point):BitmapData
 	{
+		if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0)
+			return target;
+
 		if (target == null)
 		{
 			var bounds = FlxRect.get().copyFromFlash(bitmap.rect);
 			expandFilterBounds(bounds, filters);
+			if (bounds.width <= 0 || bounds.height <= 0)
+			{
+				bounds.put();
+				return bitmap;
+			}
 			target = new BitmapData(Math.ceil(bounds.width), Math.ceil(bounds.height), true, 0);
 			point = (point == null) ? new Point(-bounds.x, -bounds.y) : new Point(point.x - bounds.x, point.y - bounds.y);
+			bounds.put();
 		}
 
 		var _filterBmp1:BitmapData = null;
